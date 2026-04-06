@@ -1,0 +1,27 @@
+{
+  "name": "hollywood-studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI Hollywood Studio — Fully automated film production pipeline",
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "type-check": "turbo type-check",
+    "db:generate": "turbo db:generate --filter=@hollywood/db",
+    "db:migrate": "turbo db:migrate --filter=@hollywood/db",
+    "db:seed": "turbo db:seed --filter=@hollywood/db",
+    "db:studio": "turbo db:studio --filter=@hollywood/db",
+    "clean": "turbo clean && rm -rf node_modules"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=10.0.0"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "devDependencies": {
+    "@types/node": "^25.5.2",
+    "turbo": "^2.9.4",
+    "typescript": "^6.0.2"
+  }
+}
