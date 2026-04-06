@@ -18,6 +18,10 @@ import {
   RotateCcw,
   Ban,
   Filter,
+  BarChart3,
+  TrendingUp,
+  Activity,
+  Timer,
 } from 'lucide-react';
 import { TimelineJobSkeleton } from '@/components/shared/LoadingSkeleton';
 import { trpc } from '@/lib/trpc';
@@ -93,8 +97,10 @@ export default function TimelinePage() {
 
   const jobsQuery = trpc.agent.getByProject.useQuery(
     { projectId, limit: 100 },
-    { refetchInterval: 5000 }, // Poll every 5s for live updates
+    { refetchInterval: 5000 },
   );
+
+  const analyticsQuery = trpc.agent.analytics.useQuery({ projectId });
 
   const retryMutation = trpc.agent.retry.useMutation({
     onSuccess: () => {
@@ -187,6 +193,75 @@ export default function TimelinePage() {
             {jobs.filter((j) => j.status === 'failed').length} failed
           </p>
         </div>
+
+        {/* Analytics Summary */}
+        {analyticsQuery.data && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <AnalyticsStat
+              icon={Activity}
+              label="Total Jobs"
+              value={analyticsQuery.data.totals.totalJobs}
+              color="text-zinc-300"
+            />
+            <AnalyticsStat
+              icon={CheckCircle2}
+              label="Completed"
+              value={analyticsQuery.data.totals.totalCompleted}
+              color="text-green-400"
+            />
+            <AnalyticsStat
+              icon={XCircle}
+              label="Failed"
+              value={analyticsQuery.data.totals.totalFailed}
+              color="text-red-400"
+            />
+            <AnalyticsStat
+              icon={TrendingUp}
+              label="Success Rate"
+              value={`${analyticsQuery.data.totals.successRate}%`}
+              color="text-amber-400"
+            />
+          </div>
+        )}
+
+        {/* Per-agent breakdown */}
+        {analyticsQuery.data && Object.keys(analyticsQuery.data.agentSummary).length > 0 && (
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <BarChart3 className="h-3.5 w-3.5" />
+              Agent Performance
+            </h3>
+            <div className="space-y-2">
+              {Object.entries(analyticsQuery.data.agentSummary).map(([agentType, stats]) => {
+                const meta = AGENT_META[agentType];
+                const pct = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+                return (
+                  <div key={agentType} className="flex items-center gap-3">
+                    <span className={`text-xs font-medium w-36 truncate ${meta?.color ?? 'text-zinc-400'}`}>
+                      {meta?.label ?? agentType}
+                    </span>
+                    <div className="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-green-500 rounded-full transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-zinc-500 w-20 text-right">
+                      {stats.completed}/{stats.total}
+                      {stats.avgDurationMs != null && (
+                        <span className="text-zinc-600 ml-1">
+                          ({stats.avgDurationMs < 1000
+                            ? `${stats.avgDurationMs}ms`
+                            : `${(stats.avgDurationMs / 1000).toFixed(1)}s`})
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Filter bar */}
         <div className="flex flex-wrap items-center gap-2">
@@ -361,6 +436,28 @@ export default function TimelinePage() {
       {toast && (
         <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />
       )}
+    </div>
+  );
+}
+
+function AnalyticsStat({
+  icon: Icon,
+  label,
+  value,
+  color,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: number | string;
+  color: string;
+}) {
+  return (
+    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3">
+      <div className="flex items-center gap-2 mb-1">
+        <Icon className={`h-3.5 w-3.5 ${color}`} />
+        <span className="text-xs text-zinc-500">{label}</span>
+      </div>
+      <p className={`text-xl font-bold ${color}`}>{value}</p>
     </div>
   );
 }

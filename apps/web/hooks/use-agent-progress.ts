@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect } from 'react';
 import { create } from 'zustand';
 import { getSocket } from '../lib/socket';
-import type { AgentType, AgentOutput } from '@hollywood/types';
+import { useNotifications } from '@/stores/use-notifications';
+import type { AgentType } from '@hollywood/types';
 
 interface AgentJobProgress {
   jobId: string;
@@ -42,8 +43,19 @@ export const useAgentProgressStore = create<AgentProgressStore>((set) => ({
  * Hook that connects to the realtime server and tracks agent progress
  * for a given project. Automatically joins/leaves the project room.
  */
+const AGENT_LABELS: Record<string, string> = {
+  script_writer: 'Script Writer',
+  storyboard_creator: 'Storyboard Creator',
+  character_generator: 'Character Generator',
+  voice_actor: 'Voice Actor',
+  video_generator: 'Video Generator',
+  editing: 'Editing',
+  marketing: 'Marketing',
+};
+
 export function useAgentProgress(projectId: string | undefined) {
   const { setJob } = useAgentProgressStore();
+  const addNotification = useNotifications((s) => s.add);
 
   useEffect(() => {
     if (!projectId) return;
@@ -68,6 +80,11 @@ export function useAgentProgress(projectId: string | undefined) {
         message: 'Completed',
         status: 'completed',
       });
+      addNotification({
+        type: 'success',
+        title: `${AGENT_LABELS[data.agentType] ?? data.agentType} completed`,
+        message: `Job ${data.jobId.slice(0, 8)} finished successfully`,
+      });
     });
 
     socket.on('agent:failed', (data) => {
@@ -79,6 +96,11 @@ export function useAgentProgress(projectId: string | undefined) {
         status: 'failed',
         error: data.error,
       });
+      addNotification({
+        type: 'error',
+        title: `${AGENT_LABELS[data.agentType] ?? data.agentType} failed`,
+        message: data.error,
+      });
     });
 
     return () => {
@@ -87,7 +109,7 @@ export function useAgentProgress(projectId: string | undefined) {
       socket.off('agent:completed');
       socket.off('agent:failed');
     };
-  }, [projectId, setJob]);
+  }, [projectId, setJob, addNotification]);
 
   return useAgentProgressStore((state) => state.jobs);
 }

@@ -12,6 +12,7 @@ import { CommandBar, useDirectorsMapCommands } from '@/components/chat-ops/Comma
 import { useCanvasStore } from '@/components/canvas/use-canvas-store';
 import { getLayoutedElements } from '@/components/canvas/auto-layout';
 import { useAgentProgress } from '@/hooks/use-agent-progress';
+import { useCanvasAutosave } from '@/hooks/use-canvas-autosave';
 import { trpc } from '@/lib/trpc';
 
 function DirectorsMapInner() {
@@ -25,6 +26,9 @@ function DirectorsMapInner() {
 
   // Connect real-time agent progress
   const agentJobs = useAgentProgress(projectId);
+
+  // Auto-save canvas + undo/redo keyboard shortcuts
+  useCanvasAutosave(projectId);
 
   // Update agent job nodes in real-time
   useEffect(() => {

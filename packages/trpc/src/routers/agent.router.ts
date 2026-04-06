@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { eq } from 'drizzle-orm';
+import { eq, count, avg, sql } from 'drizzle-orm';
 import { agentJobs, projects, ideas } from '@hollywood/db';
 import { enqueueAgentJob } from '@hollywood/queue';
 import { providerRegistry } from '@hollywood/ai-providers';
@@ -190,6 +190,95 @@ export const agentRouter = router({
         action: parsed.action as string,
         message: (parsed.message as string) ?? `Understood: ${parsed.action}`,
         jobId: null,
+      };
+    }),
+
+  /** Pipeline analytics — aggregated stats per agent type. */
+  analytics: protectedProcedure
+    .input(z.object({ projectId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      // Per-agent stats: count by status, average duration
+      const stats = await ctx.db
+        .select({
+          agentType: agentJobs.agentType,
+          status: agentJobs.status,
+          cnt: count(),
+        })
+        .from(agentJobs)
+        .where(eq(agentJobs.projectId, input.projectId))
+        .groupBy(agentJobs.agentType, agentJobs.status);
+
+      // Get all completed jobs with timing for duration calculation
+      const completedJobs = await ctx.db.query.agentJobs.findMany({
+        where: eq(agentJobs.projectId, input.projectId),
+        columns: {
+          agentType: true,
+          status: true,
+          startedAt: true,
+          completedAt: true,
+          createdAt: true,
+        },
+        orderBy: (jobs, { asc }) => [asc(jobs.createdAt)],
+      });
+
+      // Build per-agent summary
+      const agentSummary: Record<string, {
+        total: number;
+        completed: number;
+        failed: number;
+        active: number;
+        avgDurationMs: number | null;
+      }> = {};
+
+      for (const row of stats) {
+        if (!agentSummary[row.agentType]) {
+          agentSummary[row.agentType] = { total: 0, completed: 0, failed: 0, active: 0, avgDurationMs: null };
+        }
+        const s = agentSummary[row.agentType]!;
+        const c = Number(row.cnt);
+        s.total += c;
+        if (row.status === 'completed') s.completed += c;
+        else if (row.status === 'failed') s.failed += c;
+        else if (row.status === 'active') s.active += c;
+      }
+
+      // Compute average duration for completed jobs
+      for (const type of Object.keys(agentSummary)) {
+        const jobs = completedJobs.filter(
+          (j) => j.agentType === type && j.status === 'completed' && j.startedAt && j.completedAt,
+        );
+        if (jobs.length > 0) {
+          const totalMs = jobs.reduce(
+            (sum, j) => sum + (new Date(j.completedAt!).getTime() - new Date(j.startedAt!).getTime()),
+            0,
+          );
+          agentSummary[type]!.avgDurationMs = Math.round(totalMs / jobs.length);
+        }
+      }
+
+      // Timeline of recent job completions (for trend chart)
+      const recentJobs = completedJobs
+        .filter((j) => j.completedAt)
+        .slice(-50)
+        .map((j) => ({
+          agentType: j.agentType,
+          status: j.status,
+          completedAt: j.completedAt!.toISOString(),
+          durationMs: j.startedAt && j.completedAt
+            ? new Date(j.completedAt).getTime() - new Date(j.startedAt).getTime()
+            : null,
+        }));
+
+      // Overall totals
+      const totalJobs = Object.values(agentSummary).reduce((s, a) => s + a.total, 0);
+      const totalCompleted = Object.values(agentSummary).reduce((s, a) => s + a.completed, 0);
+      const totalFailed = Object.values(agentSummary).reduce((s, a) => s + a.failed, 0);
+      const successRate = totalJobs > 0 ? Math.round((totalCompleted / totalJobs) * 100) : 0;
+
+      return {
+        agentSummary,
+        recentJobs,
+        totals: { totalJobs, totalCompleted, totalFailed, successRate },
       };
     }),
 });

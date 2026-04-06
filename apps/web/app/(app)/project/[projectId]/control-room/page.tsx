@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { SlidersHorizontal, Zap, Save, RotateCcw, Sparkles } from 'lucide-react';
+import { SlidersHorizontal, Zap, Save, RotateCcw, Sparkles, Bot, Cpu } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { VibeSlider } from '@/components/control-room/VibeSlider';
 import { VibeSelector } from '@/components/control-room/VibeSelector';
@@ -78,6 +78,12 @@ export default function ControlRoomPage() {
 
   const [vibes, setVibes] = useState<VibeSettings>(DEFAULT_VIBE_SETTINGS);
   const [hasChanges, setHasChanges] = useState(false);
+  const [providerConfig, setProviderConfig] = useState({
+    text: 'mock-text',
+    image: 'mock-image',
+    audio: 'mock-audio',
+    video: 'mock-video',
+  });
 
   useEffect(() => {
     if (projectQuery.data?.vibeSettings) {
@@ -217,6 +223,141 @@ export default function ControlRoomPage() {
             </div>
           </section>
         </div>
+
+        {/* Agent Configuration */}
+        <section className="space-y-5 pt-4 border-t border-zinc-800">
+          <div className="flex items-center gap-3">
+            <Bot className="h-5 w-5 text-cyan-400" />
+            <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">AI Provider Configuration</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <ProviderSelect
+              label="Text Generation"
+              description="Script writing, editing decisions, marketing copy"
+              value={providerConfig.text}
+              onChange={(v) => setProviderConfig((p) => ({ ...p, text: v }))}
+              options={[
+                { value: 'mock-text', label: 'Mock (Free)', description: 'Simulated responses for testing' },
+                { value: 'anthropic', label: 'Anthropic Claude', description: 'Claude 4 for script writing' },
+                { value: 'openai', label: 'OpenAI GPT-4', description: 'GPT-4o for text generation' },
+              ]}
+            />
+
+            <ProviderSelect
+              label="Image Generation"
+              description="Storyboard frames, character sheets, thumbnails"
+              value={providerConfig.image}
+              onChange={(v) => setProviderConfig((p) => ({ ...p, image: v }))}
+              options={[
+                { value: 'mock-image', label: 'Mock (Free)', description: 'Placeholder SVG images' },
+                { value: 'openai-image', label: 'DALL-E 3', description: 'OpenAI image generation' },
+                { value: 'stability', label: 'Stability AI', description: 'Stable Diffusion XL' },
+              ]}
+            />
+
+            <ProviderSelect
+              label="Audio Generation"
+              description="Voice acting, dialogue lines"
+              value={providerConfig.audio}
+              onChange={(v) => setProviderConfig((p) => ({ ...p, audio: v }))}
+              options={[
+                { value: 'mock-audio', label: 'Mock (Free)', description: 'Silent audio placeholders' },
+                { value: 'elevenlabs', label: 'ElevenLabs', description: 'Professional voice synthesis' },
+                { value: 'openai-tts', label: 'OpenAI TTS', description: 'OpenAI text-to-speech' },
+              ]}
+            />
+
+            <ProviderSelect
+              label="Video Generation"
+              description="Scene animation, final rendering"
+              value={providerConfig.video}
+              onChange={(v) => setProviderConfig((p) => ({ ...p, video: v }))}
+              options={[
+                { value: 'mock-video', label: 'Mock (Free)', description: 'Placeholder video files' },
+                { value: 'runway', label: 'Runway Gen-3', description: 'AI video generation' },
+                { value: 'pika', label: 'Pika Labs', description: 'Text-to-video synthesis' },
+              ]}
+            />
+          </div>
+
+          {/* Per-agent overrides */}
+          <div className="mt-6">
+            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Cpu className="h-3.5 w-3.5" />
+              Agent Pipeline
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {AGENT_CONFIG_INFO.map((agent) => (
+                <div
+                  key={agent.type}
+                  className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 hover:border-zinc-700 transition-colors"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className={`h-2 w-2 rounded-full ${agent.color}`} />
+                    <span className="text-sm font-medium text-zinc-300">{agent.label}</span>
+                  </div>
+                  <p className="text-xs text-zinc-500">{agent.providers}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+const AGENT_CONFIG_INFO = [
+  { type: 'script_writer', label: 'Script Writer', providers: 'Uses: Text', color: 'bg-blue-400' },
+  { type: 'storyboard_creator', label: 'Storyboard Creator', providers: 'Uses: Image', color: 'bg-purple-400' },
+  { type: 'character_generator', label: 'Character Generator', providers: 'Uses: Image', color: 'bg-emerald-400' },
+  { type: 'voice_actor', label: 'Voice Actor', providers: 'Uses: Audio', color: 'bg-rose-400' },
+  { type: 'video_generator', label: 'Video Generator', providers: 'Uses: Video + Image + Audio', color: 'bg-cyan-400' },
+  { type: 'editing', label: 'Editing', providers: 'Uses: Text + Video', color: 'bg-orange-400' },
+  { type: 'marketing', label: 'Marketing', providers: 'Uses: Text + Image + Video', color: 'bg-yellow-400' },
+];
+
+interface ProviderOption {
+  value: string;
+  label: string;
+  description: string;
+}
+
+function ProviderSelect({
+  label,
+  description,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  description: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: ProviderOption[];
+}) {
+  return (
+    <div className="space-y-2">
+      <div>
+        <label className="text-sm font-medium text-zinc-300">{label}</label>
+        <p className="text-xs text-zinc-500">{description}</p>
+      </div>
+      <div className="space-y-1.5">
+        {options.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => onChange(opt.value)}
+            className={`w-full text-left px-3 py-2 rounded-lg border transition-colors ${
+              value === opt.value
+                ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                : 'bg-zinc-900/50 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-300'
+            }`}
+          >
+            <span className="text-sm font-medium">{opt.label}</span>
+            <span className="block text-xs opacity-60">{opt.description}</span>
+          </button>
+        ))}
       </div>
     </div>
   );
