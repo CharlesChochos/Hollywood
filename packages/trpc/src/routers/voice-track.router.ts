@@ -3,10 +3,10 @@ import { eq } from 'drizzle-orm';
 import { voiceTracks, scenes, projects } from '@hollywood/db';
 import { enqueueAgentJob } from '@hollywood/queue';
 import { DEFAULT_VIBE_SETTINGS } from '@hollywood/types';
-import { router, publicProcedure } from '../trpc';
+import { router, protectedProcedure } from '../trpc';
 
 export const voiceTrackRouter = router({
-  getByScene: publicProcedure
+  getByScene: protectedProcedure
     .input(z.object({ sceneId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       return ctx.db.query.voiceTracks.findMany({
@@ -16,7 +16,7 @@ export const voiceTrackRouter = router({
     }),
 
   /** Re-generate voice tracks for a scene. */
-  regenerate: publicProcedure
+  regenerate: protectedProcedure
     .input(z.object({ sceneId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       const scene = await ctx.db.query.scenes.findFirst({

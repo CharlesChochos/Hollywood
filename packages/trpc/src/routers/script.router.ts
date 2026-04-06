@@ -3,10 +3,10 @@ import { eq, and } from 'drizzle-orm';
 import { scripts, projects } from '@hollywood/db';
 import { enqueueAgentJob } from '@hollywood/queue';
 import { DEFAULT_VIBE_SETTINGS } from '@hollywood/types';
-import { router, publicProcedure } from '../trpc';
+import { router, protectedProcedure } from '../trpc';
 
 export const scriptRouter = router({
-  getByProject: publicProcedure
+  getByProject: protectedProcedure
     .input(z.object({ projectId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       return ctx.db.query.scripts.findMany({
@@ -15,7 +15,7 @@ export const scriptRouter = router({
       });
     }),
 
-  getById: publicProcedure
+  getById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       return ctx.db.query.scripts.findFirst({
@@ -25,7 +25,7 @@ export const scriptRouter = router({
     }),
 
   /** Mark a script version as the selected ("hearted") one for its idea. */
-  select: publicProcedure
+  select: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       const script = await ctx.db.query.scripts.findFirst({
@@ -48,7 +48,7 @@ export const scriptRouter = router({
     }),
 
   /** Re-enqueue the script_writer agent to produce a new version branching from this script. */
-  regenerate: publicProcedure
+  regenerate: protectedProcedure
     .input(z.object({
       scriptId: z.string().uuid(),
       additionalPrompt: z.string().optional(),

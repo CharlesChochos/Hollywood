@@ -3,10 +3,10 @@ import { eq } from 'drizzle-orm';
 import { characters, projects } from '@hollywood/db';
 import { enqueueAgentJob } from '@hollywood/queue';
 import { DEFAULT_VIBE_SETTINGS } from '@hollywood/types';
-import { router, publicProcedure } from '../trpc';
+import { router, protectedProcedure } from '../trpc';
 
 export const characterRouter = router({
-  getByProject: publicProcedure
+  getByProject: protectedProcedure
     .input(z.object({ projectId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       return ctx.db.query.characters.findMany({
@@ -15,7 +15,7 @@ export const characterRouter = router({
       });
     }),
 
-  getById: publicProcedure
+  getById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       return ctx.db.query.characters.findFirst({
@@ -23,7 +23,7 @@ export const characterRouter = router({
       });
     }),
 
-  update: publicProcedure
+  update: protectedProcedure
     .input(z.object({
       id: z.string().uuid(),
       name: z.string().min(1).optional(),
@@ -42,7 +42,7 @@ export const characterRouter = router({
     }),
 
   /** Re-generate the character's reference sheet via the character_generator agent. */
-  regenerate: publicProcedure
+  regenerate: protectedProcedure
     .input(z.object({ characterId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       const character = await ctx.db.query.characters.findFirst({

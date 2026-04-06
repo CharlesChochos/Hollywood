@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
 import { scenes } from '@hollywood/db';
-import { router, publicProcedure } from '../trpc';
+import { router, protectedProcedure } from '../trpc';
 
 export const sceneRouter = router({
-  getByScript: publicProcedure
+  getByScript: protectedProcedure
     .input(z.object({ scriptId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       return ctx.db.query.scenes.findMany({

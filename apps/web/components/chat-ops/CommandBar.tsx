@@ -10,7 +10,10 @@ import {
   X,
   Mic,
   MicOff,
+  Sparkles,
+  Loader2,
 } from 'lucide-react';
+import { trpc } from '@/lib/trpc';
 
 interface Command {
   id: string;
@@ -25,14 +28,18 @@ interface CommandBarProps {
   open: boolean;
   onClose: () => void;
   commands: Command[];
+  projectId?: string;
+  onNaturalCommandResult?: (result: { action: string; message: string; jobId: string | null }) => void;
 }
 
-export function CommandBar({ open, onClose, commands }: CommandBarProps) {
+export function CommandBar({ open, onClose, commands, projectId, onNaturalCommandResult }: CommandBarProps) {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isListening, setIsListening] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const naturalCmd = trpc.agent.naturalCommand.useMutation();
 
   const startVoiceInput = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -98,10 +105,28 @@ export function CommandBar({ open, onClose, commands }: CommandBarProps) {
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         setSelectedIndex((i) => Math.max(i - 1, 0));
-      } else if (e.key === 'Enter' && filtered[selectedIndex]) {
+      } else if (e.key === 'Enter') {
         e.preventDefault();
-        filtered[selectedIndex].action();
-        onClose();
+        if (filtered[selectedIndex]) {
+          filtered[selectedIndex].action();
+          onClose();
+        } else if (query.trim() && projectId && !isProcessing) {
+          // No matching command — send as natural language
+          setIsProcessing(true);
+          naturalCmd.mutate(
+            { projectId, command: query.trim() },
+            {
+              onSuccess: (result) => {
+                setIsProcessing(false);
+                onNaturalCommandResult?.(result);
+                onClose();
+              },
+              onError: () => {
+                setIsProcessing(false);
+              },
+            },
+          );
+        }
       }
     };
 
@@ -144,8 +169,26 @@ export function CommandBar({ open, onClose, commands }: CommandBarProps) {
         {/* Results */}
         <div className="max-h-[300px] overflow-y-auto py-2">
           {filtered.length === 0 ? (
-            <div className="px-4 py-6 text-center text-sm text-zinc-600">
-              No commands found
+            <div className="px-4 py-6 text-center">
+              {isProcessing ? (
+                <div className="flex items-center justify-center gap-2 text-sm text-amber-400">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Interpreting command...
+                </div>
+              ) : query.trim() && projectId ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-zinc-500">No matching command</p>
+                  <p className="text-xs text-zinc-600">
+                    Press <kbd className="px-1 py-0.5 bg-zinc-800 rounded border border-zinc-700 font-mono">Enter</kbd> to send as AI command
+                  </p>
+                  <div className="flex items-center justify-center gap-1.5 text-xs text-amber-400">
+                    <Sparkles className="h-3 w-3" />
+                    &ldquo;{query.slice(0, 50)}{query.length > 50 ? '...' : ''}&rdquo;
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-zinc-600">No commands found</p>
+              )}
             </div>
           ) : (
             filtered.map((cmd, i) => (

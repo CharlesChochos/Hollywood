@@ -2,16 +2,16 @@ import { z } from 'zod';
 import { eq, sql, count } from 'drizzle-orm';
 import { projects, agentJobs, scripts, scenes, assets } from '@hollywood/db';
 import { DEFAULT_VIBE_SETTINGS } from '@hollywood/types';
-import { router, publicProcedure } from '../trpc';
+import { router, protectedProcedure } from '../trpc';
 
 export const projectRouter = router({
-  list: publicProcedure.query(async ({ ctx }) => {
+  list: protectedProcedure.query(async ({ ctx }) => {
     return ctx.db.query.projects.findMany({
       orderBy: (projects, { desc }) => [desc(projects.updatedAt)],
     });
   }),
 
-  listWithStats: publicProcedure.query(async ({ ctx }) => {
+  listWithStats: protectedProcedure.query(async ({ ctx }) => {
     const allProjects = await ctx.db.query.projects.findMany({
       orderBy: (projects, { desc }) => [desc(projects.updatedAt)],
     });
@@ -58,7 +58,7 @@ export const projectRouter = router({
     }));
   }),
 
-  getById: publicProcedure
+  getById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       return ctx.db.query.projects.findFirst({
@@ -71,7 +71,7 @@ export const projectRouter = router({
       });
     }),
 
-  create: publicProcedure
+  create: protectedProcedure
     .input(z.object({
       name: z.string().min(1).max(200),
       description: z.string().optional(),
@@ -87,7 +87,7 @@ export const projectRouter = router({
       return project;
     }),
 
-  update: publicProcedure
+  update: protectedProcedure
     .input(z.object({
       id: z.string().uuid(),
       name: z.string().min(1).max(200).optional(),
@@ -103,7 +103,7 @@ export const projectRouter = router({
       return updated;
     }),
 
-  updateCanvas: publicProcedure
+  updateCanvas: protectedProcedure
     .input(z.object({
       id: z.string().uuid(),
       canvasState: z.any(),
@@ -114,7 +114,7 @@ export const projectRouter = router({
         .where(eq(projects.id, input.id));
     }),
 
-  updateVibes: publicProcedure
+  updateVibes: protectedProcedure
     .input(z.object({
       id: z.string().uuid(),
       vibeSettings: z.any(),
@@ -125,7 +125,7 @@ export const projectRouter = router({
         .where(eq(projects.id, input.id));
     }),
 
-  delete: publicProcedure
+  delete: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       await ctx.db.delete(projects).where(eq(projects.id, input.id));

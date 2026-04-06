@@ -3,10 +3,10 @@ import { eq } from 'drizzle-orm';
 import { ideas, projects } from '@hollywood/db';
 import { enqueueAgentJob } from '@hollywood/queue';
 import { DEFAULT_VIBE_SETTINGS } from '@hollywood/types';
-import { router, publicProcedure } from '../trpc';
+import { router, protectedProcedure } from '../trpc';
 
 export const ideaRouter = router({
-  getByProject: publicProcedure
+  getByProject: protectedProcedure
     .input(z.object({ projectId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       return ctx.db.query.ideas.findMany({
@@ -15,7 +15,7 @@ export const ideaRouter = router({
       });
     }),
 
-  create: publicProcedure
+  create: protectedProcedure
     .input(z.object({
       projectId: z.string().uuid(),
       prompt: z.string().min(1),

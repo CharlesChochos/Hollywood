@@ -2,10 +2,10 @@ import { z } from 'zod';
 import { eq } from 'drizzle-orm';
 import { assets } from '@hollywood/db';
 import { getUploadUrl, getDownloadUrl } from '@hollywood/storage';
-import { router, publicProcedure } from '../trpc';
+import { router, protectedProcedure } from '../trpc';
 
 export const assetRouter = router({
-  getUploadUrl: publicProcedure
+  getUploadUrl: protectedProcedure
     .input(z.object({
       key: z.string(),
       contentType: z.string(),
@@ -15,7 +15,7 @@ export const assetRouter = router({
       return { url };
     }),
 
-  getDownloadUrl: publicProcedure
+  getDownloadUrl: protectedProcedure
     .input(z.object({ assetId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       const asset = await ctx.db.query.assets.findFirst({
@@ -26,7 +26,7 @@ export const assetRouter = router({
       return { url, asset };
     }),
 
-  listByProject: publicProcedure
+  listByProject: protectedProcedure
     .input(z.object({
       projectId: z.string().uuid(),
       type: z.string().optional(),

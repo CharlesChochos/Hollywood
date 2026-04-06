@@ -3,10 +3,10 @@ import { eq } from 'drizzle-orm';
 import { storyboardFrames, scenes, projects } from '@hollywood/db';
 import { enqueueAgentJob } from '@hollywood/queue';
 import { DEFAULT_VIBE_SETTINGS } from '@hollywood/types';
-import { router, publicProcedure } from '../trpc';
+import { router, protectedProcedure } from '../trpc';
 
 export const storyboardRouter = router({
-  getByScene: publicProcedure
+  getByScene: protectedProcedure
     .input(z.object({ sceneId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       return ctx.db.query.storyboardFrames.findMany({
@@ -16,7 +16,7 @@ export const storyboardRouter = router({
     }),
 
   /** Re-generate storyboard frames for a scene. */
-  regenerate: publicProcedure
+  regenerate: protectedProcedure
     .input(z.object({ sceneId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       const scene = await ctx.db.query.scenes.findFirst({

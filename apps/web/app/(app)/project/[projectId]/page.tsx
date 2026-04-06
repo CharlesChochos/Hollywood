@@ -147,6 +147,11 @@ function DirectorsMapInner() {
         open={showCommandBar}
         onClose={() => setShowCommandBar(false)}
         commands={commands}
+        projectId={projectId}
+        onNaturalCommandResult={(result) => {
+          // Could show a toast or update canvas — for now just refetch
+          projectQuery.refetch();
+        }}
       />
     </div>
   );
