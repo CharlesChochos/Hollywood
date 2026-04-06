@@ -12,6 +12,7 @@ import {
   Loader2,
   Film,
   ExternalLink,
+  Download,
 } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 
@@ -75,15 +76,7 @@ export default function DistributionPage() {
                   <h3 className="text-xs font-medium text-zinc-500">Trailers</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {trailers.map((trailer) => (
-                      <div key={trailer.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex items-center gap-4">
-                        <div className="h-16 w-28 bg-zinc-800 rounded-lg flex items-center justify-center shrink-0">
-                          <Play className="h-6 w-6 text-zinc-600" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-zinc-200 truncate">{trailer.fileName}</p>
-                          <p className="text-xs text-zinc-500">{trailer.duration?.toFixed(1)}s &bull; {trailer.width ?? 1920}x{trailer.height ?? 1080}</p>
-                        </div>
-                      </div>
+                      <AssetCard key={trailer.id} asset={trailer} icon={Play} />
                     ))}
                   </div>
                 </div>
@@ -95,9 +88,7 @@ export default function DistributionPage() {
                   <h3 className="text-xs font-medium text-zinc-500">Thumbnails</h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {thumbnails.map((thumb) => (
-                      <div key={thumb.id} className="aspect-video bg-zinc-800 border border-zinc-700 rounded-lg flex items-center justify-center">
-                        <ImageIcon className="h-8 w-8 text-zinc-700" />
-                      </div>
+                      <AssetCard key={thumb.id} asset={thumb} icon={ImageIcon} compact />
                     ))}
                   </div>
                 </div>
@@ -163,6 +154,56 @@ function PlatformCard({ platform, icon: Icon, status, color }: { platform: strin
       </div>
       <button className="p-1.5 text-zinc-600 hover:text-zinc-400 transition-colors">
         <ExternalLink className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+function AssetCard({ asset, icon: Icon, compact }: { asset: { id: string; fileName: string; duration?: number | null; width?: number | null; height?: number | null }; icon: React.ElementType; compact?: boolean }) {
+  const utils = trpc.useUtils();
+
+  const handleDownload = async () => {
+    try {
+      const { url } = await utils.asset.getDownloadUrl.fetch({ assetId: asset.id });
+      window.open(url, '_blank');
+    } catch {
+      // S3 not configured in dev — show placeholder notice
+      alert('Download not available — S3 storage is not configured in this environment.');
+    }
+  };
+
+  if (compact) {
+    return (
+      <div className="aspect-video bg-zinc-800 border border-zinc-700 rounded-lg flex flex-col items-center justify-center gap-2 group relative">
+        <Icon className="h-8 w-8 text-zinc-700" />
+        <button
+          onClick={handleDownload}
+          className="absolute bottom-2 right-2 p-1.5 bg-zinc-900/80 rounded-md text-zinc-500 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+          title="Download"
+        >
+          <Download className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex items-center gap-4">
+      <div className="h-16 w-28 bg-zinc-800 rounded-lg flex items-center justify-center shrink-0">
+        <Icon className="h-6 w-6 text-zinc-600" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-zinc-200 truncate">{asset.fileName}</p>
+        <p className="text-xs text-zinc-500">
+          {asset.duration ? `${asset.duration.toFixed(1)}s` : ''} {asset.width ? `${asset.width}x${asset.height}` : ''}
+        </p>
+      </div>
+      <button
+        onClick={handleDownload}
+        className="p-2 text-zinc-500 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors"
+        title="Download asset"
+      >
+        <Download className="h-4 w-4" />
       </button>
     </div>
   );

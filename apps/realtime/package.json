@@ -12,6 +12,7 @@
   "dependencies": {
     "@hollywood/queue": "workspace:*",
     "@hollywood/types": "workspace:*",
+    "jose": "^6.0.11",
     "socket.io": "^4.8.3",
     "ioredis": "^5.6.1"
   },

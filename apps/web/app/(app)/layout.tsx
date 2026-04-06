@@ -1,4 +1,5 @@
 import { AppSidebar } from '@/components/layout/AppSidebar';
+import { GlobalShortcuts } from '@/components/shared/GlobalShortcuts';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -7,6 +8,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <main className="flex-1 flex flex-col overflow-hidden">
         {children}
       </main>
+      <GlobalShortcuts />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   Clock,
   Clapperboard,
@@ -17,6 +17,7 @@ import {
   Circle,
   RotateCcw,
   Ban,
+  Filter,
 } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 
@@ -110,9 +111,19 @@ export default function TimelinePage() {
     onError: (err) => showToast(`Cancel failed: ${err.message}`, 'error'),
   });
 
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [agentFilter, setAgentFilter] = useState<string | null>(null);
+
   const jobs = jobsQuery.data ?? [];
 
-  const sortedJobs = [...jobs].sort(
+  const filteredJobs = useMemo(() => {
+    let list = jobs;
+    if (statusFilter) list = list.filter((j) => j.status === statusFilter);
+    if (agentFilter) list = list.filter((j) => j.agentType === agentFilter);
+    return list;
+  }, [jobs, statusFilter, agentFilter]);
+
+  const sortedJobs = [...filteredJobs].sort(
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
   );
 
@@ -166,12 +177,61 @@ export default function TimelinePage() {
             Pipeline Timeline
           </h2>
           <p className="text-sm text-zinc-400 mt-1">
-            {sortedJobs.length} job{sortedJobs.length !== 1 ? 's' : ''} ·{' '}
-            {sortedJobs.filter((j) => j.status === 'completed').length} completed ·{' '}
-            {sortedJobs.filter((j) => j.status === 'active').length} active ·{' '}
-            {sortedJobs.filter((j) => j.status === 'failed').length} failed
+            {jobs.length} job{jobs.length !== 1 ? 's' : ''} ·{' '}
+            {jobs.filter((j) => j.status === 'completed').length} completed ·{' '}
+            {jobs.filter((j) => j.status === 'active').length} active ·{' '}
+            {jobs.filter((j) => j.status === 'failed').length} failed
           </p>
         </div>
+
+        {/* Filter bar */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter className="h-4 w-4 text-zinc-500" />
+
+          {/* Status filters */}
+          {[null, 'completed', 'active', 'failed', 'queued'].map((status) => (
+            <button
+              key={status ?? 'all'}
+              onClick={() => setStatusFilter(status)}
+              className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                statusFilter === status
+                  ? 'bg-amber-600 text-white'
+                  : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700'
+              }`}
+            >
+              {status ?? 'All statuses'}
+            </button>
+          ))}
+
+          <span className="text-zinc-700">|</span>
+
+          {/* Agent type filters */}
+          {[null, ...Object.keys(AGENT_META)].map((agent) => (
+            <button
+              key={agent ?? 'all-agents'}
+              onClick={() => setAgentFilter(agent)}
+              className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                agentFilter === agent
+                  ? 'bg-amber-600 text-white'
+                  : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700'
+              }`}
+            >
+              {agent ? (AGENT_META[agent]?.label ?? agent) : 'All agents'}
+            </button>
+          ))}
+        </div>
+
+        {sortedJobs.length === 0 && (statusFilter || agentFilter) && (
+          <div className="flex flex-col items-center justify-center h-32 text-center">
+            <p className="text-sm text-zinc-400">No jobs match the current filters</p>
+            <button
+              onClick={() => { setStatusFilter(null); setAgentFilter(null); }}
+              className="mt-2 text-xs text-amber-500 hover:text-amber-400"
+            >
+              Clear filters
+            </button>
+          </div>
+        )}
 
         {phases.map((phase) => {
           if (phase.jobs.length === 0) return null;

@@ -125,6 +125,29 @@ export const projectRouter = router({
         .where(eq(projects.id, input.id));
     }),
 
+  exportProject: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const project = await ctx.db.query.projects.findFirst({
+        where: eq(projects.id, input.id),
+        with: {
+          ideas: true,
+          scripts: true,
+          scenes: true,
+          characters: true,
+          assets: true,
+          agentJobs: true,
+          finalCuts: true,
+        },
+      });
+      if (!project) throw new Error('Project not found');
+      return {
+        exportVersion: 1,
+        exportedAt: new Date().toISOString(),
+        project,
+      };
+    }),
+
   delete: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {

@@ -52,10 +52,15 @@ export function AppSidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="p-3 border-t border-zinc-800">
+      <div className="p-3 border-t border-zinc-800 space-y-1">
         <div className="flex items-center gap-2 px-3 py-2 text-xs text-zinc-500">
           <Sparkles className="h-3 w-3" />
           <span>AI Agents: 7 ready</span>
+        </div>
+        <div className="flex items-center gap-2 px-3 py-1 text-xs text-zinc-600">
+          <span>Press</span>
+          <kbd className="px-1.5 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-500 font-mono text-[10px]">?</kbd>
+          <span>for shortcuts</span>
         </div>
       </div>
     </aside>

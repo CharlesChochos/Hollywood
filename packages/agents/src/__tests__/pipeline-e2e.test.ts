@@ -245,7 +245,7 @@ describe('Full pipeline E2E (mock providers)', () => {
     // Editing must trigger marketing
     expect(result.nextJobs).toBeDefined();
     expect(result.nextJobs).toHaveLength(1);
-    expect(result.nextJobs![0].agentType).toBe('marketing');
+    expect(result.nextJobs![0]!.agentType).toBe('marketing');
   });
 
   // ── 7. Marketing ────────────────────────────────────────────────
@@ -328,7 +328,7 @@ describe('Full pipeline E2E (mock providers)', () => {
     expect(progressCalls[progressCalls.length - 1]).toBe(100);
     // Should be monotonically non-decreasing
     for (let i = 1; i < progressCalls.length; i++) {
-      expect(progressCalls[i]).toBeGreaterThanOrEqual(progressCalls[i - 1]);
+      expect(progressCalls[i]).toBeGreaterThanOrEqual(progressCalls[i - 1]!);
     }
   });
 });

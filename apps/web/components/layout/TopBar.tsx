@@ -4,9 +4,10 @@ import { Search, Bell } from 'lucide-react';
 
 interface TopBarProps {
   title?: string;
+  children?: React.ReactNode;
 }
 
-export function TopBar({ title }: TopBarProps) {
+export function TopBar({ title, children }: TopBarProps) {
   return (
     <header className="h-14 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-sm flex items-center justify-between px-6">
       <div className="flex items-center gap-4">
@@ -14,6 +15,7 @@ export function TopBar({ title }: TopBarProps) {
       </div>
 
       <div className="flex items-center gap-3">
+        {children}
         {/* Command bar trigger */}
         <button
           className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800/50 border border-zinc-700 text-sm text-zinc-400 hover:text-white hover:border-zinc-600 transition-colors"

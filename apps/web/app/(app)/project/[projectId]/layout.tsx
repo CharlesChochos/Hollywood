@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
 import { TopBar } from '@/components/layout/TopBar';
@@ -12,6 +13,8 @@ import {
   SlidersHorizontal,
   BarChart3,
   Clock,
+  Download,
+  Loader2,
 } from 'lucide-react';
 
 const tabs = [
@@ -29,12 +32,45 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
   const pathname = usePathname();
   const projectId = params.projectId as string;
   const basePath = `/project/${projectId}`;
+  const [isExporting, setIsExporting] = useState(false);
 
   const projectQuery = trpc.project.getById.useQuery({ id: projectId });
+  const utils = trpc.useUtils();
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const data = await utils.project.exportProject.fetch({ id: projectId });
+      const json = JSON.stringify(data, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${(projectQuery.data?.name ?? 'project').replace(/[^a-z0-9]/gi, '_').toLowerCase()}_export.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <>
-      <TopBar title={projectQuery.data?.name ?? 'Loading...'} />
+      <TopBar title={projectQuery.data?.name ?? 'Loading...'}>
+        <button
+          onClick={handleExport}
+          disabled={isExporting}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg transition-colors disabled:opacity-50"
+          title="Export project as JSON"
+        >
+          {isExporting ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Download className="h-3.5 w-3.5" />
+          )}
+          Export
+        </button>
+      </TopBar>
 
       {/* Tab Navigation */}
       <div className="border-b border-zinc-800 bg-zinc-950/50">

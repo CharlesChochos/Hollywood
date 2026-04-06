@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Plus, Film, Clock, ChevronRight, Clapperboard,
-  CheckCircle2, AlertCircle, Loader2, Layers,
+  CheckCircle2, AlertCircle, Loader2, Layers, Search, X,
 } from 'lucide-react';
 import { TopBar } from '@/components/layout/TopBar';
 import { trpc } from '@/lib/trpc';
@@ -56,6 +56,8 @@ export default function DashboardPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDescription, setNewDescription] = useState('');
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
   const projectsQuery = trpc.project.listWithStats.useQuery();
   const createProject = trpc.project.create.useMutation({
@@ -77,6 +79,22 @@ export default function DashboardPage() {
     }
   };
 
+  const filteredProjects = useMemo(() => {
+    let list = projectsQuery.data ?? [];
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.description?.toLowerCase().includes(q)),
+      );
+    }
+    if (statusFilter) {
+      list = list.filter((p) => p.status === statusFilter);
+    }
+    return list;
+  }, [projectsQuery.data, search, statusFilter]);
+
   return (
     <>
       <TopBar title="Dashboard" />
@@ -97,6 +115,47 @@ export default function DashboardPage() {
             New Project
           </button>
         </div>
+
+        {/* Search & Filters */}
+        {(projectsQuery.data?.length ?? 0) > 0 && (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-6">
+            {/* Search input */}
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search projects..."
+                className="w-full pl-9 pr-8 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Status filter pills */}
+            <div className="flex items-center gap-1.5">
+              {[null, 'draft', 'in_progress', 'review', 'published'].map((status) => (
+                <button
+                  key={status ?? 'all'}
+                  onClick={() => setStatusFilter(status)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                    statusFilter === status
+                      ? 'bg-amber-600 text-white'
+                      : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700'
+                  }`}
+                >
+                  {status ? (STATUS_CONFIG[status]?.label ?? status) : 'All'}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Create Project Modal */}
         {isCreating && (
@@ -148,7 +207,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-8 w-8 border-2 border-amber-500 border-t-transparent" />
           </div>
-        ) : projectsQuery.data?.length === 0 ? (
+        ) : (projectsQuery.data?.length ?? 0) === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-center">
             <Film className="h-16 w-16 text-zinc-700 mb-4" />
             <h3 className="text-lg font-medium text-zinc-300">No projects yet</h3>
@@ -164,9 +223,20 @@ export default function DashboardPage() {
               Create First Project
             </button>
           </div>
+        ) : filteredProjects.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-40 text-center">
+            <Search className="h-8 w-8 text-zinc-600 mb-2" />
+            <p className="text-sm text-zinc-400">No projects match your search</p>
+            <button
+              onClick={() => { setSearch(''); setStatusFilter(null); }}
+              className="mt-2 text-xs text-amber-500 hover:text-amber-400"
+            >
+              Clear filters
+            </button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {projectsQuery.data?.map((project) => (
+            {filteredProjects.map((project) => (
               <button
                 key={project.id}
                 onClick={() => router.push(`/project/${project.id}`)}
