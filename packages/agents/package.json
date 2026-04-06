@@ -1,0 +1,22 @@
+{
+  "name": "@hollywood/agents",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@hollywood/ai-providers": "workspace:*",
+    "@hollywood/db": "workspace:*",
+    "@hollywood/storage": "workspace:*",
+    "@hollywood/types": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5"
+  }
+}

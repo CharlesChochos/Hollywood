@@ -34,8 +34,8 @@ coverage/
 # MinIO data (local dev)
 minio_data/
 
-# Drizzle
-drizzle/meta/
+# Drizzle (keep meta/ — it tracks migration state)
+# drizzle/meta/ — intentionally tracked
 
 # Temp files
 tmp/

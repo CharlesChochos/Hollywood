@@ -12,16 +12,29 @@
     "db:migrate": "turbo db:migrate --filter=@hollywood/db",
     "db:seed": "turbo db:seed --filter=@hollywood/db",
     "db:studio": "turbo db:studio --filter=@hollywood/db",
-    "clean": "turbo clean && rm -rf node_modules"
+    "clean": "turbo clean && rm -rf node_modules",
+    "setup": "bash scripts/dev-setup.sh",
+    "smoke-test": "bash scripts/smoke-test.sh",
+    "test": "turbo test"
   },
   "engines": {
     "node": ">=22.0.0",
     "pnpm": ">=10.0.0"
   },
   "packageManager": "pnpm@10.33.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "msgpackr-extract",
+      "sharp",
+      "unrs-resolver"
+    ]
+  },
   "devDependencies": {
     "@types/node": "^25.5.2",
+    "@vitest/coverage-v8": "^4.1.2",
     "turbo": "^2.9.4",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.2"
   }
 }

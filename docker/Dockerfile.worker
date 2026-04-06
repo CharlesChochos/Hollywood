@@ -1,0 +1,36 @@
+FROM node:22-alpine AS base
+RUN corepack enable && corepack prepare pnpm@10 --activate
+WORKDIR /app
+
+# ── Dependencies ──
+FROM base AS deps
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
+COPY packages/types/package.json packages/types/
+COPY packages/db/package.json packages/db/
+COPY packages/ai-providers/package.json packages/ai-providers/
+COPY packages/agents/package.json packages/agents/
+COPY packages/queue/package.json packages/queue/
+COPY packages/storage/package.json packages/storage/
+COPY apps/worker/package.json apps/worker/
+RUN pnpm install --frozen-lockfile
+
+# ── Build ──
+FROM base AS builder
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN pnpm build --filter=@hollywood/worker
+
+# ── Runtime ──
+FROM base AS runner
+ENV NODE_ENV=production
+
+RUN addgroup --system --gid 1001 appgroup && \
+    adduser --system --uid 1001 appuser
+
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages ./packages
+COPY --from=builder /app/apps/worker/dist ./apps/worker/dist
+COPY --from=builder /app/apps/worker/package.json ./apps/worker/
+
+USER appuser
+CMD ["node", "apps/worker/dist/index.js"]

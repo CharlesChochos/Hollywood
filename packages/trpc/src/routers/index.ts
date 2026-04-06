@@ -1,0 +1,9 @@
+export { projectRouter } from './project.router';
+export { ideaRouter } from './idea.router';
+export { scriptRouter } from './script.router';
+export { sceneRouter } from './scene.router';
+export { characterRouter } from './character.router';
+export { storyboardRouter } from './storyboard.router';
+export { voiceTrackRouter } from './voice-track.router';
+export { agentRouter } from './agent.router';
+export { assetRouter } from './asset.router';
