@@ -9,16 +9,16 @@ interface TopBarProps {
 
 export function TopBar({ title, children }: TopBarProps) {
   return (
-    <header className="h-14 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-sm flex items-center justify-between px-6">
-      <div className="flex items-center gap-4">
-        {title && <h2 className="text-lg font-semibold text-white">{title}</h2>}
+    <header className="h-14 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-sm flex items-center justify-between px-4 md:px-6">
+      <div className="flex items-center gap-4 min-w-0">
+        {title && <h2 className="text-base md:text-lg font-semibold text-white truncate">{title}</h2>}
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 md:gap-3 shrink-0">
         {children}
-        {/* Command bar trigger */}
+        {/* Command bar trigger — hidden on small screens */}
         <button
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800/50 border border-zinc-700 text-sm text-zinc-400 hover:text-white hover:border-zinc-600 transition-colors"
+          className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800/50 border border-zinc-700 text-sm text-zinc-400 hover:text-white hover:border-zinc-600 transition-colors"
           onClick={() => {
             // TODO: Phase 3 — open command bar
           }}

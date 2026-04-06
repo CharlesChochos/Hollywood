@@ -2,8 +2,13 @@
 @import "@xyflow/react/dist/style.css";
 
 :root {
-  --background: #ffffff;
+  --background: #f5f5f5;
   --foreground: #171717;
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 @theme inline {
@@ -13,17 +18,41 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Light mode overrides for zinc-based dark UI */
+html:not(.dark) {
+  /* Sidebar & layout borders */
+  & .border-zinc-800 { border-color: #e4e4e7; }
+  & .bg-zinc-950 { background-color: #ffffff; }
+  & .bg-zinc-950\/50 { background-color: rgba(255,255,255,0.5); }
+  & .bg-zinc-950\/80 { background-color: rgba(255,255,255,0.8); }
+  & .bg-zinc-900 { background-color: #f4f4f5; }
+  & .bg-zinc-900\/50 { background-color: rgba(244,244,245,0.5); }
+  & .bg-zinc-800 { background-color: #e4e4e7; }
+  & .bg-zinc-800\/50 { background-color: rgba(228,228,231,0.5); }
+  & .bg-zinc-700 { background-color: #d4d4d8; }
+  & .text-white { color: #18181b; }
+  & .text-zinc-100 { color: #27272a; }
+  & .text-zinc-200 { color: #3f3f46; }
+  & .text-zinc-300 { color: #52525b; }
+  & .text-zinc-400 { color: #71717a; }
+  & .text-zinc-500 { color: #a1a1aa; }
+  & .text-zinc-600 { color: #d4d4d8; }
+  & .border-zinc-700 { border-color: #d4d4d8; }
+  & .hover\:bg-zinc-800:hover { background-color: #e4e4e7; }
+  & .hover\:bg-zinc-800\/50:hover { background-color: rgba(228,228,231,0.5); }
+  & .hover\:bg-zinc-700:hover { background-color: #d4d4d8; }
+  & .hover\:text-white:hover { color: #18181b; }
+  & .hover\:border-zinc-700:hover { border-color: #d4d4d8; }
+  & .hover\:border-zinc-600:hover { border-color: #a1a1aa; }
+  & .hover\:text-zinc-300:hover { color: #52525b; }
+  & .hover\:text-zinc-200:hover { color: #3f3f46; }
+  & .hover\:text-zinc-400:hover { color: #71717a; }
 }
 
 /* Semantic zoom — hide detail at macro/mid zoom levels */

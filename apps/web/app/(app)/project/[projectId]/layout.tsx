@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
 import { TopBar } from '@/components/layout/TopBar';
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { trpc } from '@/lib/trpc';
 import {
   Map,
@@ -100,7 +101,9 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
 
       {/* Page Content */}
       <div className="flex-1 overflow-hidden">
-        {children}
+        <ErrorBoundary>
+          {children}
+        </ErrorBoundary>
       </div>
     </>
   );

@@ -7,6 +7,7 @@ import {
   CheckCircle2, AlertCircle, Loader2, Layers, Search, X,
 } from 'lucide-react';
 import { TopBar } from '@/components/layout/TopBar';
+import { ProjectGridSkeleton } from '@/components/shared/LoadingSkeleton';
 import { trpc } from '@/lib/trpc';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -204,9 +205,7 @@ export default function DashboardPage() {
 
         {/* Project Grid */}
         {projectsQuery.isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-amber-500 border-t-transparent" />
-          </div>
+          <ProjectGridSkeleton />
         ) : (projectsQuery.data?.length ?? 0) === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-center">
             <Film className="h-16 w-16 text-zinc-700 mb-4" />

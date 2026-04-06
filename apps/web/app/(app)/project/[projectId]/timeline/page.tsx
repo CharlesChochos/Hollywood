@@ -19,6 +19,7 @@ import {
   Ban,
   Filter,
 } from 'lucide-react';
+import { TimelineJobSkeleton } from '@/components/shared/LoadingSkeleton';
 import { trpc } from '@/lib/trpc';
 
 const AGENT_META: Record<string, { label: string; icon: typeof Clock; color: string }> = {
@@ -147,9 +148,12 @@ export default function TimelinePage() {
 
   if (jobsQuery.isLoading) {
     return (
-      <div className="flex items-center justify-center h-full text-zinc-400">
-        <Loader2 className="h-6 w-6 animate-spin mr-2" />
-        Loading timeline...
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="max-w-4xl mx-auto space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <TimelineJobSkeleton key={i} />
+          ))}
+        </div>
       </div>
     );
   }
