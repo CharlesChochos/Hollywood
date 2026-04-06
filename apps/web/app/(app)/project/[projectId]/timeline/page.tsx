@@ -1,6 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
+import { useState, useCallback } from 'react';
 import {
   Clock,
   Clapperboard,
@@ -14,6 +15,8 @@ import {
   XCircle,
   Loader2,
   Circle,
+  RotateCcw,
+  Ban,
 } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 
@@ -52,19 +55,67 @@ function formatTime(date: string | Date): string {
   return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
+// Simple toast notification
+function Toast({ message, type, onDismiss }: { message: string; type: 'success' | 'error'; onDismiss: () => void }) {
+  return (
+    <div
+      className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border animate-in slide-in-from-bottom-4 ${
+        type === 'success'
+          ? 'bg-green-900/90 border-green-700 text-green-200'
+          : 'bg-red-900/90 border-red-700 text-red-200'
+      }`}
+    >
+      {type === 'success' ? (
+        <CheckCircle2 className="h-4 w-4 shrink-0" />
+      ) : (
+        <XCircle className="h-4 w-4 shrink-0" />
+      )}
+      <span className="text-sm">{message}</span>
+      <button onClick={onDismiss} className="text-xs opacity-60 hover:opacity-100 ml-2">
+        dismiss
+      </button>
+    </div>
+  );
+}
+
 export default function TimelinePage() {
   const params = useParams();
   const projectId = params.projectId as string;
 
-  const jobsQuery = trpc.agent.getByProject.useQuery({ projectId, limit: 100 });
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const showToast = useCallback((message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  }, []);
+
+  const jobsQuery = trpc.agent.getByProject.useQuery(
+    { projectId, limit: 100 },
+    { refetchInterval: 5000 }, // Poll every 5s for live updates
+  );
+
+  const retryMutation = trpc.agent.retry.useMutation({
+    onSuccess: () => {
+      showToast('Job re-queued successfully', 'success');
+      jobsQuery.refetch();
+    },
+    onError: (err) => showToast(`Retry failed: ${err.message}`, 'error'),
+  });
+
+  const cancelMutation = trpc.agent.cancel.useMutation({
+    onSuccess: () => {
+      showToast('Job cancelled', 'success');
+      jobsQuery.refetch();
+    },
+    onError: (err) => showToast(`Cancel failed: ${err.message}`, 'error'),
+  });
+
   const jobs = jobsQuery.data ?? [];
 
-  // Sort by creation time
   const sortedJobs = [...jobs].sort(
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
   );
 
-  // Group by pipeline phase
   const phases = [
     { key: 'script_writer', jobs: sortedJobs.filter((j) => j.agentType === 'script_writer') },
     { key: 'parallel', jobs: sortedJobs.filter((j) =>
@@ -145,11 +196,18 @@ export default function TimelinePage() {
                     color: 'text-zinc-400',
                   };
                   const Icon = meta.icon;
+                  const isFailed = job.status === 'failed';
+                  const isActive = job.status === 'active';
+                  const isQueued = job.status === 'queued';
 
                   return (
                     <div
                       key={job.id}
-                      className="relative bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 hover:border-zinc-700 transition-colors"
+                      className={`relative bg-zinc-900/50 border rounded-lg p-4 transition-colors ${
+                        isFailed
+                          ? 'border-red-900/50 hover:border-red-800'
+                          : 'border-zinc-800 hover:border-zinc-700'
+                      }`}
                     >
                       {/* Timeline dot */}
                       <div className="absolute -left-[31px] top-4 w-4 h-4 rounded-full bg-zinc-900 border-2 border-zinc-700 flex items-center justify-center">
@@ -157,9 +215,9 @@ export default function TimelinePage() {
                       </div>
 
                       <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-3">
-                          <Icon className={`h-5 w-5 mt-0.5 ${meta.color}`} />
-                          <div>
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <Icon className={`h-5 w-5 mt-0.5 shrink-0 ${meta.color}`} />
+                          <div className="min-w-0">
                             <p className="text-sm font-medium text-zinc-200">{meta.label}</p>
                             {job.targetEntityId && (
                               <p className="text-xs text-zinc-500 mt-0.5">
@@ -167,23 +225,58 @@ export default function TimelinePage() {
                               </p>
                             )}
                             {job.error && (
-                              <p className="text-xs text-red-400 mt-1">{job.error}</p>
+                              <p className="text-xs text-red-400 mt-1 break-words">
+                                {job.error}
+                              </p>
                             )}
                           </div>
                         </div>
 
-                        <div className="text-right text-xs text-zinc-500 shrink-0">
-                          <p>{formatTime(job.createdAt)}</p>
-                          {job.startedAt && (
-                            <p className="text-zinc-600">
-                              Duration: {formatDuration(job.startedAt, job.completedAt)}
-                            </p>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {/* Action buttons */}
+                          {isFailed && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                retryMutation.mutate({ jobId: job.id });
+                              }}
+                              disabled={retryMutation.isPending}
+                              className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-amber-400 bg-amber-900/30 hover:bg-amber-900/50 border border-amber-800/50 rounded-md transition-colors disabled:opacity-50"
+                              title="Retry this job"
+                            >
+                              <RotateCcw className="h-3 w-3" />
+                              Retry
+                            </button>
                           )}
+                          {(isActive || isQueued) && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                cancelMutation.mutate({ jobId: job.id });
+                              }}
+                              disabled={cancelMutation.isPending}
+                              className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-red-400 bg-red-900/30 hover:bg-red-900/50 border border-red-800/50 rounded-md transition-colors disabled:opacity-50"
+                              title="Cancel this job"
+                            >
+                              <Ban className="h-3 w-3" />
+                              Cancel
+                            </button>
+                          )}
+
+                          {/* Timestamp */}
+                          <div className="text-right text-xs text-zinc-500">
+                            <p>{formatTime(job.createdAt)}</p>
+                            {job.startedAt && (
+                              <p className="text-zinc-600">
+                                {formatDuration(job.startedAt, job.completedAt)}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
 
                       {/* Progress bar for active jobs */}
-                      {job.status === 'active' && (
+                      {isActive && (
                         <div className="mt-3 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                           <div
                             className="h-full bg-amber-500 rounded-full transition-all duration-500"
@@ -199,6 +292,11 @@ export default function TimelinePage() {
           );
         })}
       </div>
+
+      {/* Toast notification */}
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />
+      )}
     </div>
   );
 }

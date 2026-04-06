@@ -2,24 +2,80 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Film, Clock, ChevronRight } from 'lucide-react';
+import {
+  Plus, Film, Clock, ChevronRight, Clapperboard,
+  CheckCircle2, AlertCircle, Loader2, Layers,
+} from 'lucide-react';
 import { TopBar } from '@/components/layout/TopBar';
 import { trpc } from '@/lib/trpc';
+
+const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  draft:       { label: 'Draft',       color: 'bg-zinc-800 text-zinc-400' },
+  in_progress: { label: 'In Progress', color: 'bg-blue-900/50 text-blue-400' },
+  review:      { label: 'Review',      color: 'bg-purple-900/50 text-purple-400' },
+  published:   { label: 'Published',   color: 'bg-green-900/50 text-green-400' },
+  archived:    { label: 'Archived',    color: 'bg-zinc-800 text-zinc-500' },
+};
+
+function PipelineProgress({ stats }: { stats: { completed: number; active: number; failed: number; total: number } }) {
+  if (stats.total === 0) return null;
+  const pct = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+
+  return (
+    <div className="mt-3">
+      <div className="flex items-center justify-between text-xs mb-1">
+        <span className="text-zinc-500">Pipeline</span>
+        <span className="text-zinc-400">{pct}%</span>
+      </div>
+      <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden flex">
+        {stats.completed > 0 && (
+          <div
+            className="bg-green-500 transition-all"
+            style={{ width: `${(stats.completed / stats.total) * 100}%` }}
+          />
+        )}
+        {stats.active > 0 && (
+          <div
+            className="bg-blue-500 animate-pulse transition-all"
+            style={{ width: `${(stats.active / stats.total) * 100}%` }}
+          />
+        )}
+        {stats.failed > 0 && (
+          <div
+            className="bg-red-500 transition-all"
+            style={{ width: `${(stats.failed / stats.total) * 100}%` }}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const router = useRouter();
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
+  const [newDescription, setNewDescription] = useState('');
 
-  const projectsQuery = trpc.project.list.useQuery();
+  const projectsQuery = trpc.project.listWithStats.useQuery();
   const createProject = trpc.project.create.useMutation({
     onSuccess: (project) => {
       setIsCreating(false);
       setNewName('');
+      setNewDescription('');
       projectsQuery.refetch();
       router.push(`/project/${project!.id}`);
     },
   });
+
+  const handleCreate = () => {
+    if (newName.trim()) {
+      createProject.mutate({
+        name: newName.trim(),
+        description: newDescription.trim() || undefined,
+      });
+    }
+  };
 
   return (
     <>
@@ -46,29 +102,37 @@ export default function DashboardPage() {
         {isCreating && (
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
             <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 w-full max-w-md">
-              <h3 className="text-lg font-semibold text-white mb-4">New Project</h3>
+              <h3 className="text-lg font-semibold text-white mb-1">New Project</h3>
+              <p className="text-sm text-zinc-500 mb-4">
+                Start with a name — you can add ideas and configure the AI crew from the canvas.
+              </p>
               <input
                 autoFocus
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                placeholder="Enter project name..."
+                placeholder="Project name..."
                 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500"
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newName.trim()) {
-                    createProject.mutate({ name: newName.trim() });
-                  }
+                  if (e.key === 'Enter' && newName.trim()) handleCreate();
                   if (e.key === 'Escape') setIsCreating(false);
                 }}
               />
+              <textarea
+                value={newDescription}
+                onChange={(e) => setNewDescription(e.target.value)}
+                placeholder="Brief description (optional)..."
+                rows={2}
+                className="w-full mt-3 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 resize-none text-sm"
+              />
               <div className="flex justify-end gap-3 mt-4">
                 <button
-                  onClick={() => setIsCreating(false)}
+                  onClick={() => { setIsCreating(false); setNewName(''); setNewDescription(''); }}
                   className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={() => newName.trim() && createProject.mutate({ name: newName.trim() })}
+                  onClick={handleCreate}
                   disabled={!newName.trim() || createProject.isPending}
                   className="px-4 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
                 >
@@ -88,9 +152,17 @@ export default function DashboardPage() {
           <div className="flex flex-col items-center justify-center h-64 text-center">
             <Film className="h-16 w-16 text-zinc-700 mb-4" />
             <h3 className="text-lg font-medium text-zinc-300">No projects yet</h3>
-            <p className="text-sm text-zinc-500 mt-1">
-              Create your first project to start producing AI-powered films
+            <p className="text-sm text-zinc-500 mt-1 max-w-sm">
+              Create your first project to start producing AI-powered films.
+              Drop an idea on the canvas and watch the AI crew bring it to life.
             </p>
+            <button
+              onClick={() => setIsCreating(true)}
+              className="mt-4 flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              Create First Project
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -100,32 +172,64 @@ export default function DashboardPage() {
                 onClick={() => router.push(`/project/${project.id}`)}
                 className="group text-left bg-zinc-900 border border-zinc-800 rounded-xl p-5 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all"
               >
+                {/* Title row */}
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-white group-hover:text-amber-400 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <Clapperboard className="h-4 w-4 text-amber-500 shrink-0" />
+                    <h3 className="font-semibold text-white group-hover:text-amber-400 transition-colors truncate">
                       {project.name}
                     </h3>
-                    {project.description && (
-                      <p className="text-sm text-zinc-500 mt-1 line-clamp-2">
-                        {project.description}
-                      </p>
-                    )}
                   </div>
-                  <ChevronRight className="h-4 w-4 text-zinc-600 group-hover:text-zinc-400 transition-colors mt-1" />
+                  <ChevronRight className="h-4 w-4 text-zinc-600 group-hover:text-zinc-400 transition-colors mt-0.5 shrink-0" />
                 </div>
-                <div className="flex items-center gap-3 mt-4">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                    project.status === 'draft' ? 'bg-zinc-800 text-zinc-400' :
-                    project.status === 'in_progress' ? 'bg-blue-900/50 text-blue-400' :
-                    project.status === 'published' ? 'bg-green-900/50 text-green-400' :
-                    'bg-zinc-800 text-zinc-400'
-                  }`}>
-                    {project.status}
+
+                {/* Description */}
+                {project.description && (
+                  <p className="text-sm text-zinc-500 mt-1.5 line-clamp-2">
+                    {project.description}
+                  </p>
+                )}
+
+                {/* Stats row */}
+                <div className="flex items-center gap-4 mt-3 text-xs">
+                  <span className={`px-2 py-0.5 rounded-full font-medium ${STATUS_CONFIG[project.status]?.color ?? STATUS_CONFIG.draft.color}`}>
+                    {STATUS_CONFIG[project.status]?.label ?? project.status}
                   </span>
-                  <span className="flex items-center gap-1 text-xs text-zinc-600">
-                    <Clock className="h-3 w-3" />
-                    {new Date(project.updatedAt).toLocaleDateString()}
-                  </span>
+
+                  {project.stats.scenes > 0 && (
+                    <span className="flex items-center gap-1 text-zinc-500">
+                      <Layers className="h-3 w-3" />
+                      {project.stats.scenes} scene{project.stats.scenes !== 1 ? 's' : ''}
+                    </span>
+                  )}
+
+                  {project.stats.completed > 0 && (
+                    <span className="flex items-center gap-1 text-green-500">
+                      <CheckCircle2 className="h-3 w-3" />
+                      {project.stats.completed}
+                    </span>
+                  )}
+                  {project.stats.active > 0 && (
+                    <span className="flex items-center gap-1 text-blue-400">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      {project.stats.active}
+                    </span>
+                  )}
+                  {project.stats.failed > 0 && (
+                    <span className="flex items-center gap-1 text-red-400">
+                      <AlertCircle className="h-3 w-3" />
+                      {project.stats.failed}
+                    </span>
+                  )}
+                </div>
+
+                {/* Pipeline progress bar */}
+                <PipelineProgress stats={project.stats} />
+
+                {/* Timestamp */}
+                <div className="flex items-center gap-1 mt-3 text-xs text-zinc-600">
+                  <Clock className="h-3 w-3" />
+                  Updated {new Date(project.updatedAt).toLocaleDateString()}
                 </div>
               </button>
             ))}

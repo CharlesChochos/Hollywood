@@ -102,7 +102,12 @@ export class MarketingAgent implements Agent<MarketingInput, MarketingOutput> {
 
     let socialData: Array<{ platform: string; caption: string }>;
     try {
-      socialData = JSON.parse(socialRaw);
+      const parsed = JSON.parse(socialRaw);
+      if (Array.isArray(parsed)) {
+        socialData = parsed;
+      } else {
+        throw new Error('Not an array');
+      }
     } catch {
       socialData = [
         { platform: 'youtube', caption: 'Watch our latest AI-generated film!' },

@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { eq } from 'drizzle-orm';
-import { projects } from '@hollywood/db';
+import { eq, sql, count } from 'drizzle-orm';
+import { projects, agentJobs, scripts, scenes, assets } from '@hollywood/db';
 import { DEFAULT_VIBE_SETTINGS } from '@hollywood/types';
 import { router, publicProcedure } from '../trpc';
 
@@ -9,6 +9,53 @@ export const projectRouter = router({
     return ctx.db.query.projects.findMany({
       orderBy: (projects, { desc }) => [desc(projects.updatedAt)],
     });
+  }),
+
+  listWithStats: publicProcedure.query(async ({ ctx }) => {
+    const allProjects = await ctx.db.query.projects.findMany({
+      orderBy: (projects, { desc }) => [desc(projects.updatedAt)],
+    });
+
+    // Get job stats per project in one query
+    const jobStats = await ctx.db
+      .select({
+        projectId: agentJobs.projectId,
+        status: agentJobs.status,
+        cnt: count(),
+      })
+      .from(agentJobs)
+      .groupBy(agentJobs.projectId, agentJobs.status);
+
+    // Get scene counts per project
+    const sceneCounts = await ctx.db
+      .select({
+        projectId: scenes.projectId,
+        cnt: count(),
+      })
+      .from(scenes)
+      .groupBy(scenes.projectId);
+
+    // Build stats map
+    const statsMap = new Map<string, { completed: number; active: number; failed: number; total: number; scenes: number }>();
+    for (const row of jobStats) {
+      const existing = statsMap.get(row.projectId) ?? { completed: 0, active: 0, failed: 0, total: 0, scenes: 0 };
+      const c = Number(row.cnt);
+      existing.total += c;
+      if (row.status === 'completed') existing.completed += c;
+      else if (row.status === 'active') existing.active += c;
+      else if (row.status === 'failed') existing.failed += c;
+      statsMap.set(row.projectId, existing);
+    }
+    for (const row of sceneCounts) {
+      const existing = statsMap.get(row.projectId) ?? { completed: 0, active: 0, failed: 0, total: 0, scenes: 0 };
+      existing.scenes = Number(row.cnt);
+      statsMap.set(row.projectId, existing);
+    }
+
+    return allProjects.map((p) => ({
+      ...p,
+      stats: statsMap.get(p.id) ?? { completed: 0, active: 0, failed: 0, total: 0, scenes: 0 },
+    }));
   }),
 
   getById: publicProcedure
